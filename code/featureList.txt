@@ -1,0 +1,59 @@
+List of Features
+
+NookBot
+
+!command args
+
+
+
+
+n!server init
+n!server migrate <old server name>    *note: look into 'guilds'  
+
+
+n!hello -name David
+n!hello -player Penguin
+n!hello -island Iglooin
+n!hello -fruit Cherry
+n!hello -sw 526805847502
+n!hello -timezone PDT
+
+n!whois
+n!whois <discord>
+
+
+
+n!record fossil <name>
+n!record bug <name>
+n!record fish <name>
+n!record recipe <name>
+n!record event <event name> <obj name>
+n!record stalk <price>
+n!record stalk <week> <time> <price>
+
+
+n!remove <same as record>
+
+
+n!lookup fossil
+n!lookup fossil <name>
+
+
+
+n!sudo <discord> <cmd>
+
+
+
+***
+
+Stalk Market:
+
+n!stalk record <week> <time> <price>
+n!stalk record <price>
+n!stalk remove
+n!stalk remove <week> <time>
+n!stalk lookup
+
+ ^ could i incorporate into standard functions?
+
+** alternatively, maintain two sheets: current week, and historical.
