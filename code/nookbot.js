@@ -12,10 +12,11 @@ import {constants as c} from './const.js';
 // var nook = require('./utils/nookcmds.js')
 import nookcmds from './utils/nookcmds.js';
 
-let nooked = new nookcmds();
+// let nookc = new nookcmds();
 
 // nooked.init();
 
+var ncmds = null;
 
 // Configure logger settings
 logger.remove(logger.transports.Console);
@@ -23,7 +24,7 @@ logger.add(new logger.transports.Console, {
     colorize: true
 });
 
-logger.level = 'debug';
+logger.level = c.LOG_LEVEL;
 
 // Initialize Discord Bot
 var nookbot = new Discord.Client({
@@ -49,9 +50,12 @@ nookbot.on('ready', function (evt) {
         ' server(s): [' + serverNames + ']');
     // logger.info('channels: ' + nookbot.channels.length);
     // logger.info('users: ' + nookbot.users);
+
+    ncmds = new nookcmds(nookbot, logger);
+    logger.info('[nookbot] nookc initialized.')
 });
 
-logger.info(c.cmd_prefix);
+logger.info(c.CMD_PREFIX);
 
 
 logger.info('Initializing Google Sheets.');
@@ -71,8 +75,7 @@ logger.info('Finished Google Sheets Initialization.');
  *  Keeps listening for user input while alive.
  */
 nookbot.on('message', function (user, userID, channelID, message, evt) {
-    // if (message.substring(0, c.cmd_len) == c.cmd_prefix) {
-    if (message.substring(0, 2) == 'n!') {
+    if (message.substring(0, c.CMD_PREFIX.length) == c.CMD_PREFIX) {
         var args = message.substring(2).split(' ');
         var cmd = args[0];
 
@@ -80,6 +83,7 @@ nookbot.on('message', function (user, userID, channelID, message, evt) {
             evt.d.author.discriminator + " sent command: " + message);
        
         args = args.splice(1);
+        // args shows [0, 1, 2, 3] -> [1, 2, 3]
         switch(cmd) {
             // !ping
             case 'ping':
@@ -90,16 +94,14 @@ nookbot.on('message', function (user, userID, channelID, message, evt) {
                 });
             break;
             case 'help':
-                nookbot.sendMessage({
-                    to: channelID,
-                    message: 'Available Commands: \n ' + 
-                            'n!help \n n!server'
-                });
+                ncmds.help(channelID, args);
+            break;
+            case 'server':
+                ncmds.server(evt);
             break;
             case 'hello':
-                nook.helloWorld(nookbot, channelID, args);
+                ncmds.hello(evt);
             break;
-            // Just add any case commands if you want to..
             case 'init':
                 logger.info('received: init command.');
                 logger.info(user);
@@ -117,6 +119,8 @@ nookbot.on('message', function (user, userID, channelID, message, evt) {
                 logger.info(evt.d.author.username);
                 logger.info(evt.d.author.discriminator);
             break;
+            default:
+                ncmds.invalidCmd(channelID);
          }
      }
 });
