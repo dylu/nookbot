@@ -20,6 +20,7 @@ export default class nookcmds {
     sendMsg(channelID, msg)
     {
         if (typeof msg == 'undefined' || msg == null) {
+            this.logger.error(" nookcmds.sendMsg: empty message.");
             return;
         } else {
             this.nookbot.sendMessage({
@@ -35,7 +36,7 @@ export default class nookcmds {
         {
             addmsg = "";
         }
-        this.sendMsg('Invalid Command' + addmsg);
+        this.sendMsg(channelID, 'Invalid Command' + addmsg);
     }
 
     /**
@@ -58,6 +59,8 @@ export default class nookcmds {
      */
     hello(evt)
     {
+        this.logger.info(evt.d.channel_id);
+        this.logger.info(evt.d.content);
         var channelID = evt.d.channel_id;
         var msg = evt.d.content;
         var invalidMsg = "\n - n!hello accepts one of the following: \n " + 
@@ -70,33 +73,49 @@ export default class nookcmds {
 
         var subcmd = msg.split(' ')[1];
         var author = evt.d.author.username + "#" + evt.d.author.discriminator;
-        var authorID = evt.d.author.id;
+        var discorduser = evt.d.author.username;
+        var discorddisc = evt.d.author.discriminator;
+        // var authorID = evt.d.author.id;
+        var serverID = evt.d.guild_id;
 
         // this.logger.debug( "    " + evt.d.author.username + "#" + 
         //     evt.d.author.discriminator + " sent command: " + message);
-       
-        args = args.splice(1);
-        switch(subcmd) {
-            case 'name':
+        
+        this.logger.info("a");
 
-            break;
-            case 'player':
-            break;
-            case 'island':
-            break;
-            case 'fruit':
-            break;
-            case 'sw':
-            break;
-            case 'timezone':
-            break;
-            case 'batch':
-            break;
-            case 'sync':
-            break;
-            default:
-                this.invalidCmd(channelID);
-         }
+        // if entry already exists
+        this.gsheets.userExists(serverID, author, (exists) => {
+            // If false, create the entry.
+            this.logger.info("b");
+            if (exists < 0) {
+                this.logger.info("c");
+                this.gsheets.createUserEntry(serverID, author);
+            }
+
+            this.logger.info("d");
+            // args = args.splice(1);
+            switch(subcmd) {
+                case 'name':
+                    this.gsheets.updateUser({name: name});
+                break;
+                case 'player':
+                break;
+                case 'island':
+                break;
+                case 'fruit':
+                break;
+                case 'sw':
+                break;
+                case 'timezone':
+                break;
+                case 'batch':
+                break;
+                case 'sync':
+                break;
+                default:
+                    this.invalidCmd(channelID);
+             }
+        });
     }
 
 
@@ -151,6 +170,17 @@ export default class nookcmds {
             default:
                 this.invalidCmd(channelID);
          }
+    }
+
+    record(evt)
+    {
+        // TODO
+    }
+
+    test(evt)
+    {
+        var serverID = evt.d.guild_id;
+        this.gsheets.initServer(serverID);
     }
 
 }

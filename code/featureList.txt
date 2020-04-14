@@ -7,7 +7,7 @@ NookBot
 
 
 
-n!server init
+* n!server init
 n!server update <old server name>    *note: look into 'guilds'  
 n!server migrate <another server name>
 

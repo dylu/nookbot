@@ -58,17 +58,6 @@ nookbot.on('ready', function (evt) {
 logger.info(c.CMD_PREFIX);
 
 
-logger.info('Initializing Google Sheets.');
-
-logger.info('Skipping Google Sheets, lmao.');
-
-// var gsheets = require('./googletest.js');
-// var gsheets = require('./utils/googlesheets.js');
-
-
-logger.info('Finished Google Sheets Initialization.');
-
-
 
 /**
  * 'Main' Polling Function -- Waits for User Commands in the form of 'n!command'
@@ -118,6 +107,11 @@ nookbot.on('message', function (user, userID, channelID, message, evt) {
                 logger.info("get author disc:");
                 logger.info(evt.d.author.username);
                 logger.info(evt.d.author.discriminator);
+            break;
+            case 'record':
+                ncmds.record(evt);
+            case 'test':
+                ncmds.test(evt);
             break;
             default:
                 ncmds.invalidCmd(channelID);

@@ -72,16 +72,21 @@ export default class googlesheets {
 
     refreshAuth()
     {
-        fs.readFile(CREDS_PATH, (err, content) => {
-            if (err) return console.log('Error loading client secret file:', err);
-            // Authorize a client with credentials, then call the Google Sheets API.
-            this.authorize(JSON.parse(content), 
-                function(auth) {
-                    this.sheets = google.sheets({version: 'v4', auth});
-                    this.drive  = google.drive({version: 'v3', auth})
-                    this.auth = auth;
-                });
-        });
+        if (typeof this.auth == 'undefined' || this.auth == null
+            || typeof this.sheets == 'undefined' || this.sheets == null
+            || typeof this.drive == 'undefined' || this.drive == null)
+        {
+            fs.readFile(CREDS_PATH, (err, content) => {
+                if (err) return console.log('Error loading client secret file:', err);
+                // Authorize a client with credentials, then call the Google Sheets API.
+                this.authorize(JSON.parse(content), 
+                    function(auth) {
+                        this.sheets = google.sheets({version: 'v4', auth});
+                        this.drive  = google.drive({version: 'v3', auth})
+                        this.auth = auth;
+                    });
+            });
+        }
     }
 
 
@@ -118,12 +123,7 @@ export default class googlesheets {
 
     serverCheckExists(serverID)
     {
-        if (typeof this.auth == 'undefined' || this.auth == null
-            || typeof this.sheets == 'undefined' || this.sheets == null
-            || typeof this.drive == 'undefined' || this.drive == null)
-        {
-            this.refreshAuth();
-        }
+        this.refreshAuth();
 
         this.sheets.spreadsheets.values.get({
             spreadsheetId: c.NOOKBOT_METADATA_TABLE,
@@ -158,18 +158,166 @@ export default class googlesheets {
         });
     }
 
+    getServerSheet(serverID, callback)
+    {
+        this.refreshAuth();
+
+        this.sheets.spreadsheets.values.get({
+            spreadsheetId: c.NOOKBOT_METADATA_TABLE,
+            range: 'ServerList!B2:D',
+        }, (err, res) => {
+            if (err) 
+            {
+                this.logger.error('The API returned an error: ' + err)
+                return callback(-1);
+            } // else
+            const rows = res.data.values;
+            if (rows.length) {
+                rows.map((row) => {
+                    if (row[0] == serverID)
+                    {
+                        var spreadsheetID = row[2];
+                        this.logger.debug('Spreadsheet ID: ' + spreadsheetID);
+                        return callback(spreadsheetID);
+                    }
+                });
+            }
+            // return callback(-1);
+        });
+    }
+
+    userExists(serverID, user, callback)
+    {
+        this.refreshAuth();
+
+        this.getServerSheet(serverID, (spreadsheetID) => {
+            this.sheets.spreadsheets.values.get({
+                spreadsheetId: spreadsheetID,
+                range: 'Hello!B2:D',
+            }, (err, res) => {
+                if (err) 
+                {
+                    console.log("\n\t\t uhhhhh  01 \n\n");
+                    console.log(err);
+                    this.logger.error('The API returned an error: ' + err)
+                    return callback(-1);
+                } // else
+                if (res)
+                {
+                    console.log("\n\t\t wtf  02 \n\n");
+                    console.log(res);
+                    const rows = res.data.values;
+                    // if (rows.length) {
+                    if (typeof rows != 'undefined' && rows != null && rows.length) {
+                        let rowNum = 1;
+                        console.log('ServerID, Server_Name:');
+                        rows.map((row) => {
+                            rowNum++;
+                            let rowUser = row[0] + '#' + row[1];
+                            if (rowUser == user)
+                            {
+                                this.logger.debug('Found user: ' + rowUser);
+                                return callback(rowNum);
+                            }
+                        });
+                    }
+                }
+                
+
+                return callback(-1);
+            });
+        });
+    }
+
+    createUserEntry(serverID, user)
+    {
+        let userDiscord = user.split('#')[0];
+        let userDiscrim = user.split('#')[1];
+
+        this.getServerSheet(serverID, (spreadsheetID) => {
+            this.sheets.spreadsheets.values.append({
+                spreadsheetId: spreadsheetID,
+                range: 'Hello!A2:J',
+                insertDataOption: 'INSERT_ROWS',
+                valueInputOption: 'RAW',
+                resource: {
+                    range: 'Hello!A2:J',
+                    majorDimension: 'ROWS',
+                    values: [
+                        [, userDiscord, userDiscrim]
+                    ]
+                },
+                auth: this.auth
+            }, (err, res) => {
+                if (err) 
+                {
+                    console.log("\n\t\t uhhhhh  03 \n\n");
+                    console.log(err);
+                    this.logger.error('  googlesheets.createUserEntry: '
+                        + 'The API returned an error: ' 
+                        + err)
+                    return false;
+                } // else
+                if (res)
+                {
+                    console.log("\n\t\t uhhhhh  04 \n\n");
+                    console.log(res);
+                    // passed.
+                    this.logger.debug('  googlesheets.createUserEntry: ' 
+                        + 'write completed:');
+                    this.logger.debug(res);
+                }
+
+            });
+        });
+
+        return true;
+    }
+
+
+    updateUser(serverID, user, updateReq)
+    {
+        let userDiscord = user.split('#')[0];
+        let userDiscrim = user.split('#')[1];
+
+        this.getServerSheet(serverID, (spreadsheetID) => {
+            this.sheets.spreadsheets.values.append({
+                spreadsheetId: spreadsheetID,
+                range: 'Hello!D2:J',
+                insertDataOption: 'INSERT_ROWS',
+                valueInputOption: 'RAW',
+                resource: {
+                    range: 'ServerList!D2:J',
+                    majorDimension: 'ROWS',
+                    values: [
+                        [updateReq.name]
+                    ]
+                },
+                auth: this.auth
+            }, (err, res) => {
+                if (err) 
+                {
+                    this.logger.error('The API returned an error: ' 
+                        + err)
+                    return false;
+                } // else
+
+                // passed.
+                this.logger.debug('  googlesheets.updateUser: ' 
+                    + 'write completed:');
+                this.logger.debug(res);
+            });
+        });
+
+        return callback();
+    }
+
     /**
      * Creates a new Spreadsheet, representing a new discord server init.
      */
     newServer(serverID, serverName, callback)
     {
-        if (typeof this.auth == 'undefined' || this.auth == null
-            || typeof this.sheets == 'undefined' || this.sheets == null
-            || typeof this.drive == 'undefined' || this.drive == null)
-        {
-            this.refreshAuth();
-        }
-
+        this.refreshAuth();
 
         // Check if sheet already exists.
         this.sheets.spreadsheets.values.get({
@@ -201,73 +349,142 @@ export default class googlesheets {
             if (!serverExists)
             {
                 let sheetName = "[NookBot Server] " + serverName; 
-                this.sheets.spreadsheets.create({
-                    resource: {
-                        properties: {
-                            title:sheetName
-                    }},
-                    auth: this.auth
-                    // fields: 'spreadsheetId',
+                // this.sheets.spreadsheets.create({
+                //     resource: {
+                //         properties: {
+                //             title:sheetName
+                //     }},
+                //     auth: this.auth
+                // }, (err, res) => {
+                this.drive.files.copy({
+                    fileId: c.NOOKBOT_SERVER_TEMPLATE,
+                    requestBody: {
+                        name: sheetName,
+                        parents: [c.NOOKBOT_SERVER_FOLDER]
+                    }
                 }, (err, res) => {
+                    // if (err) {
+                    //     this.logger.error('The API returned an error: ' + err);
+                    // } else {
+                    //     this.logger.debug(res);
+                    // }
                     if (err) {
-                        this.logger.error('The API returned an error: ' + err)
+                        this.logger.error('The API returned an error: ' + err);
                         return callback(false);
                     } else {
-                        let sheetID = res.data.spreadsheetId;
-                        this.logger.debug('  googlesheets.newServer: create completed:');
+                        let sheetID = res.data.id;
+                        this.logger.debug('  googlesheets.newServer: ' 
+                            + 'clone completed:');
                         this.logger.debug(`    Spreadsheet ID: ${sheetID}`);
                         
-                        let moveReq =
+                        // let moveReq =
+                        // {
+                        //     addParents: [c.NOOKBOT_SERVER_FOLDER],
+                        //     removeParents: 'root',
+                        //     fileId: sheetID
+                        // }
+                        // this.drive.files.update(moveReq, (err, res) => {
+                            // if (err) {
+                            //     this.logger.error('The API returned an error: ' 
+                            //         + err);
+                            //     return callback(false);
+                            // } else {
+                        if (res.status == 200)
                         {
-                            addParents: [c.NOOKBOT_SERVER_FOLDER],
-                            removeParents: 'root',
-                            fileId: sheetID
-                        }
-                        this.drive.files.update(moveReq, (err, res) => {
-                            if (err) {
-                                this.logger.error('The API returned an error: ' + err)
-                                return callback(false);
-                            } else {
-                                if (res.status == 200)
+                            // passed.
+                            this.logger.debug('  googlesheets.newServer: ' 
+                                + 'move completed:');
+                            this.logger.debug(res);
+
+                            this.sheets.spreadsheets.values.append({
+                                spreadsheetId: c.NOOKBOT_METADATA_TABLE,
+                                range: 'ServerList!A2:H',
+                                insertDataOption: 'INSERT_ROWS',
+                                valueInputOption: 'RAW',
+                                resource: {
+                                    range: 'ServerList!A2:H',
+                                    majorDimension: 'ROWS',
+                                    values: [
+                                        ['NookBot', serverID, serverName, 
+                                            sheetID, c.NOOKBOT_CURRENT_VERSION, 
+                                            0, Date.now(), Date.now()]
+                                    ]
+                                },
+                                auth: this.auth
+                            }, (err, res) => {
+                                if (err) 
                                 {
-                                    // passed.
-                                    this.logger.debug('  googlesheets.newServer: move completed:');
-                                    this.logger.debug(res);
+                                    this.logger.error('The API returned an error: ' 
+                                        + err)
+                                    return false;
+                                } // else
 
-                                    this.sheets.spreadsheets.values.append({
-                                        spreadsheetId: c.NOOKBOT_METADATA_TABLE,
-                                        range: 'ServerList!A2:G',
-                                        insertDataOption: 'INSERT_ROWS',
-                                        valueInputOption: 'RAW',
-                                        resource: {
-                                            range: 'ServerList!A2:G',
-                                            majorDimension: 'ROWS',
-                                            values: [
-                                                ['NookBot', serverID, serverName, sheetID, 0, 0, 0]
-                                            ]
-                                        },
-                                        auth: this.auth
-                                    }, (err, res) => {
-                                        if (err) 
-                                        {
-                                            this.logger.error('The API returned an error: ' + err)
-                                            return false;
-                                        } // else
-
-                                        // passed.
-                                        this.logger.debug('  googlesheets.newServer: write completed:');
-                                        this.logger.debug(res);
-                                        return callback(true);
-                                    });
-                                }
-                            }
-                        });     // moveUpdate end.
+                                // passed.
+                                this.logger.debug('  googlesheets.newServer: ' 
+                                    + 'write completed:');
+                                this.logger.debug(res);
+                                return callback(true);
+                            });
+                        }
+                            // }
+                        // });     // moveUpdate end.
                     }
-                });     // createSpreadsheet end.
+                });     // copyFile end.
             }
         });
         // return callback(false);
     } // newServer end
+
+
+    initServer(serverID, callback)
+    {
+        this.logger.debug('  googlesheets.newServer: test init');
+
+        let addSheetReq = {
+            requests: [
+                {
+                    addSheet: {
+                        properties: {
+                            title: "Hello",
+                            gridProperties: {
+                                rowCount: 50,
+                                columnCount: 10
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+
+        this.sheets.spreadsheets.values.append({
+            spreadsheetId: serverID,
+            range: 'Hello!A1:I',
+            insertDataOption: 'INSERT_ROWS',
+            valueInputOption: 'RAW',
+            resource: {
+                range: 'Hello!A1:I',
+                majorDimension: 'ROWS',
+                values: [
+                    ['Num', 'Discord', 'Discriminator', 'Name', 'Player', 
+                    'Island', 'Fruit', 'Flowers', 'SW', 'Timezone']
+                ]
+            },
+            auth: this.auth
+        }, (err, res) => {
+            if (err) 
+            {
+                this.logger.error('The API returned an error: ' + err)
+                return false;
+            } // else
+
+            // passed.
+            this.logger.debug('  googlesheets.newServer: write completed:');
+            this.logger.debug(res);
+            return callback(true);
+        });
+    }
+
+
 
 
     /**
