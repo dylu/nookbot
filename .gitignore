@@ -1,0 +1,10 @@
+# Gitignore for nookbot
+
+
+
+
+# Custom directories
+
+/data/
+/code/auth/
+/code/tmp/
