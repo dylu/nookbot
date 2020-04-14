@@ -193,7 +193,7 @@ export default class googlesheets {
         this.getServerSheet(serverID, (spreadsheetID) => {
             this.sheets.spreadsheets.values.get({
                 spreadsheetId: spreadsheetID,
-                range: 'Hello!B2:D',
+                range: 'Hello!B2:C',
             }, (err, res) => {
                 if (err) 
                 {
@@ -204,27 +204,32 @@ export default class googlesheets {
                 } // else
                 if (res)
                 {
+                    let found = false;
                     console.log("\n\t\t wtf  02 \n\n");
                     console.log(res);
                     const rows = res.data.values;
                     // if (rows.length) {
                     if (typeof rows != 'undefined' && rows != null && rows.length) {
                         let rowNum = 1;
-                        console.log('ServerID, Server_Name:');
                         rows.map((row) => {
                             rowNum++;
                             let rowUser = row[0] + '#' + row[1];
                             if (rowUser == user)
                             {
-                                this.logger.debug('Found user: ' + rowUser);
+                                found = true;
+                                this.logger.debug('  gsheets.userExists: Found user ' + 
+                                    rowUser + 'on row ' + rowNum);
                                 return callback(rowNum);
                             }
                         });
                     }
+                    if (!found)
+                    {
+                        this.logger.debug(' gsheets.userExists: User ' + user + 
+                                    'not found.');
+                        return callback(-1);
+                    }
                 }
-                
-
-                return callback(-1);
             });
         });
     }
